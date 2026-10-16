@@ -391,4 +391,4 @@ Las siguientes funcionalidades quedan fuera del MVP inicial y podrían valorarse
 
 Mercat es un proyecto práctico para aplicar de forma progresiva tecnologías del ecosistema Java sobre un caso de uso concreto. Su alcance reducido permite centrarse en el flujo esencial de compra, la persistencia de datos, una interfaz web, una API REST y una primera experiencia con integración continua y despliegue.
 
-El objetivo principal es comprender cada etapa, documentar las decisiones y mantener una aplicación que pueda revisarse y ejecutarse desde GitHub.
+El objetivo principal es comprender cada etapa, documentar las decisiones y mantener una aplicación que pueda revisarse y ejecutarse desde GitHub. 
