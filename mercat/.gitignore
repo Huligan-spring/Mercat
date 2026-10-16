@@ -31,3 +31,11 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Entorno y credenciales ###
+.env
+.env.local
+*.log
+
+### Dependencias si se usa Node localmente ###
+node_modules/
