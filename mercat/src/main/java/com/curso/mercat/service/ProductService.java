@@ -22,4 +22,12 @@ public class ProductService {
     public Optional<Product> findByBarcode(String barcode) {
         return productRepository.findByBarcode(barcode);
     }
+
+    // Creamos un producto
+    public Product createProduct(Product product) {
+        if (productRepository.findByBarcode(product.getBarcode()).isPresent()) {
+            throw new IllegalArgumentException("Ya existe un producto con el código de barras: " + product.getBarcode());
+        }
+        return productRepository.save(product);
+    }
 }

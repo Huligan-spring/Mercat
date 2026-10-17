@@ -39,3 +39,8 @@ build/
 
 ### Dependencias si se usa Node localmente ###
 node_modules/
+
+# Archivos de captura y multimedia temporal
+*.png
+*.jpg
+*.jpeg
