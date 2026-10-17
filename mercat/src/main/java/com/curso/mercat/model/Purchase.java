@@ -31,7 +31,7 @@ public class Purchase {
     //mappedBy = "purchase": Indica que la clave foránea real no está en la tabla purchases, sino en el campo purchase_id dentro de la clase PurchaseItem
     //cascade = CascadeType.ALL: Fundamental para transacciones atómicas.
     //orphanRemoval = true: Si eliminas un elemento de la lista items en Java, Hibernate generará un DELETE en la base de datos para borrar esa fila huérfana.
-    @OneToMany(mappedBy = "purchase_id", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "purchase", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PurchaseItem> items = new ArrayList<>();
 
 
