@@ -74,4 +74,10 @@ public class ProductController {
             ));
         }
     }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<Product>> searchSuggestions(@RequestParam("q") String query) {
+        List<Product> suggestions = productService.getSuggestions(query);
+        return ResponseEntity.ok(suggestions);
+    }
 }

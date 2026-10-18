@@ -5,6 +5,7 @@ import com.curso.mercat.repository.ProductRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -30,6 +31,7 @@ public class ProductService {
     }
 
     // Creamos un producto
+    @Transactional
     public Product createProduct(Product product) {
         if (productRepository.findByBarcode(product.getBarcode()).isPresent()) {
             throw new IllegalArgumentException("Ya existe un producto con el código de barras: " + product.getBarcode());
@@ -72,6 +74,13 @@ public class ProductService {
                 .orElseThrow(() -> new IllegalArgumentException("No se encontró el producto con código: " + barcode));
 
         productRepository.delete(product);
+    }
+
+    public List<Product> getSuggestions(String query) {
+        if (query == null || query.trim().length() < 2) {
+            return Collections.emptyList();
+        }
+        return productRepository.findTop6ByNameContainingIgnoreCase(query.trim());
     }
 
 }
