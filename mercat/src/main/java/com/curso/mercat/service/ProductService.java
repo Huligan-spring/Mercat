@@ -1,86 +1,94 @@
 package com.curso.mercat.service;
 
+import com.curso.mercat.dto.ProductRequestDTO;
 import com.curso.mercat.model.Product;
+import com.curso.mercat.model.Role;
+import com.curso.mercat.model.User;
 import com.curso.mercat.repository.ProductRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
-@Service //Indica a Spring que esta clase es un bean de lógica de negocio
+@Service
 public class ProductService {
 
     private final ProductRepository productRepository;
 
-    // Inyección de dependencias por constructor
     public ProductService(ProductRepository productRepository) {
         this.productRepository = productRepository;
     }
 
-    // Consulta de solo lectura por código de barras
+    // Búsqueda por código de barras con soporte híbrido / invitado
     @Transactional(readOnly = true)
-    public Optional<Product> findByBarcode(String barcode) {
-        return productRepository.findByBarcode(barcode);
+    public Optional<Product> getByBarcode(String barcode, User user) {
+        if (user != null) {
+            return productRepository.findEffectiveProduct(barcode, user.getId());
+        }
+        return productRepository.findByBarcodeAndUserIsNull(barcode);
     }
 
+    // Sugerencias de autocompletado híbridas / invitado
     @Transactional(readOnly = true)
-    public List<Product> findAllProducts() {
-        return productRepository.findAll();
-    }
-
-    // Creamos un producto
-    @Transactional
-    public Product createProduct(Product product) {
-        if (productRepository.findByBarcode(product.getBarcode()).isPresent()) {
-            throw new IllegalArgumentException("Ya existe un producto con el código de barras: " + product.getBarcode());
-        }
-        return productRepository.save(product);
-    }
-
-
-    //Modificamos un producto
-    @Transactional
-    public Product updateProduct(String barcode, Product productData) {
-        // 1. Buscar el producto existente
-        Product existingProduct = productRepository.findByBarcode(barcode)
-                .orElseThrow(() -> new IllegalArgumentException("No se encontró el producto con código: " + barcode));
-
-        // 2. Si se quiere cambiar el barcode, verificar que el nuevo no esté repetido en otro producto
-        if (productData.getBarcode() != null && !productData.getBarcode().equals(barcode)) {
-            if (productRepository.findByBarcode(productData.getBarcode()).isPresent()) {
-                throw new IllegalArgumentException("El nuevo código de barras ya está en uso: " + productData.getBarcode());
-            }
-            existingProduct.setBarcode(productData.getBarcode());
-        }
-
-        // 3. Actualizar campos permitidos
-        if (productData.getName() != null) {
-            existingProduct.setName(productData.getName());
-        }
-        if (productData.getPrice() != null) {
-            existingProduct.setPrice(productData.getPrice());
-        }
-
-        // 4. Guardar los cambios
-        return productRepository.save(existingProduct);
-    }
-
-
-    @Transactional
-    public void deleteProductByBarcode(String barcode) {
-        Product product = productRepository.findByBarcode(barcode)
-                .orElseThrow(() -> new IllegalArgumentException("No se encontró el producto con código: " + barcode));
-
-        productRepository.delete(product);
-    }
-
-    public List<Product> getSuggestions(String query) {
+    public List<Product> searchSuggestions(String query, User user) {
         if (query == null || query.trim().length() < 2) {
-            return Collections.emptyList();
+            return List.of();
         }
-        return productRepository.findTop6ByNameContainingIgnoreCase(query.trim());
+        if (user != null) {
+            return productRepository.searchEffectiveSuggestions(query.trim(), user.getId());
+        }
+        return productRepository.searchGlobalSuggestions(query.trim());
     }
 
+    // Creación o modificación inteligente (Forking)
+    @Transactional
+    public Product upsertProduct(ProductRequestDTO dto, User user) {
+        if (dto.getBarcode() == null || dto.getBarcode().isBlank()) {
+            throw new IllegalArgumentException("El código de barras es obligatorio.");
+        }
+
+        // Caso 1: Administrador creando o modificando producto global
+        if (user.getRole() == Role.ROLE_ADMIN && dto.isMakeGlobal()) {
+            Product globalProduct = productRepository.findByBarcodeAndUserIsNull(dto.getBarcode())
+                    .orElse(new Product());
+            globalProduct.setBarcode(dto.getBarcode());
+            globalProduct.setName(dto.getName());
+            globalProduct.setPrice(dto.getPrice());
+            globalProduct.setUser(null); // Asegura que sea global
+            return productRepository.save(globalProduct);
+        }
+
+        // Caso 2: Usuario estándar (o admin guardando copia privada)
+        Optional<Product> personalProduct = productRepository.findByBarcodeAndUser(dto.getBarcode(), user);
+
+        if (personalProduct.isPresent()) {
+            // Ya tiene copia personal: la actualiza
+            Product p = personalProduct.get();
+            p.setName(dto.getName());
+            p.setPrice(dto.getPrice());
+            return productRepository.save(p);
+        } else {
+            // No tiene copia personal: crea una nueva vinculada a su cuenta (Forking)
+            Product newPersonal = new Product();
+            newPersonal.setBarcode(dto.getBarcode());
+            newPersonal.setName(dto.getName());
+            newPersonal.setPrice(dto.getPrice());
+            newPersonal.setUser(user);
+            return productRepository.save(newPersonal);
+        }
+    }
+
+    // Eliminación segura de productos
+    @Transactional
+    public void deleteProduct(String barcode, User user) {
+        if (user.getRole() == Role.ROLE_ADMIN) {
+            // Un admin puede borrar tanto la copia global como una personal
+            productRepository.findByBarcodeAndUserIsNull(barcode)
+                    .ifPresent(productRepository::delete);
+        }
+        // Un usuario estándar solo puede borrar su propia versión personalizada
+        productRepository.findByBarcodeAndUser(barcode, user)
+                .ifPresent(productRepository::delete);
+    }
 }

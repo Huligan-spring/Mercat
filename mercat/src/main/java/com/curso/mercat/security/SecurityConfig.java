@@ -27,19 +27,24 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
+                .cors(cors -> {})
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider)
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth
-                        // Rutes públiques d'autenticació (registre i login)
+                        // 1. Auth público
                         .requestMatchers("/api/v1/auth/**").permitAll()
-                        // Rutes de lectura del catàleg públiques per a l'escàner
-                        .requestMatchers(HttpMethod.GET, "/api/v1/products/**").permitAll()
-                        // Només administradors poden esborrar productes globals
-                        .requestMatchers(HttpMethod.DELETE, "/api/v1/products/**").hasRole("ADMIN")
-                        // Tota la resta requereix autenticació amb token JWT
+                        // 2. GET en productos (cubre /api/v1/products, /search, /by-barcode/...)
+                        .requestMatchers(HttpMethod.GET, "/api/v1/products", "/api/v1/products/**").permitAll()
+                        // 3. POST, PUT, DELETE en productos requieren login
+                        .requestMatchers(HttpMethod.POST, "/api/v1/products", "/api/v1/products/**").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/products", "/api/v1/products/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/products", "/api/v1/products/**").authenticated()
+                        // 4. Compras requieren login
+                        .requestMatchers("/api/v1/purchases", "/api/v1/purchases/**").authenticated()
+                        // 5. Resto autenticado
                         .anyRequest().authenticated()
-                );
+                )
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

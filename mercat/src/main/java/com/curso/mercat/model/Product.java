@@ -1,5 +1,6 @@
 package com.curso.mercat.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 import java.math.BigDecimal;
@@ -11,7 +12,7 @@ public class Product {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name= "barcode", nullable = false, unique = true, length = 13)
+    @Column(name= "barcode", nullable = false, length = 13)
     private String barcode;
 
     @Column(name = "name", nullable = false, length = 150) //nullable = false es NOT NULL en la BD
@@ -22,6 +23,7 @@ public class Product {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id") // Nullable por defecto (null = producto global)
+    @JsonIgnore // <-- Evita exponer datos privados del usuario al devolver un producto
     private User user;
 
     // 1. Constructor vacío (Obligatorio para JPA/Hibernate)
