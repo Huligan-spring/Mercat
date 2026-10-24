@@ -31,17 +31,21 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider)
                 .authorizeHttpRequests(auth -> auth
-                        // 1. Auth público
+                        // 1. Permitir preflight CORS a cualquier ruta
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        // 2. Health check ultra ligero y público para Render / Ping
+                        .requestMatchers("/api/v1/health").permitAll()
+                        // 3. Endpoints públicos de login y registro
                         .requestMatchers("/api/v1/auth/**").permitAll()
-                        // 2. GET en productos (cubre /api/v1/products, /search, /by-barcode/...)
+                        // 4. Lectura pública de productos (Modo Invitado / Catálogo global)
                         .requestMatchers(HttpMethod.GET, "/api/v1/products", "/api/v1/products/**").permitAll()
-                        // 3. POST, PUT, DELETE en productos requieren login
+                        // 5. Escritura y eliminación de productos (Requieren autenticación)
                         .requestMatchers(HttpMethod.POST, "/api/v1/products", "/api/v1/products/**").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/v1/products", "/api/v1/products/**").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/products", "/api/v1/products/**").authenticated()
-                        // 4. Compras requieren login
+                        // 6. Compras requieren autenticación
                         .requestMatchers("/api/v1/purchases", "/api/v1/purchases/**").authenticated()
-                        // 5. Resto autenticado
+                        // 7. Cualquier otra petición
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
