@@ -1,13 +1,8 @@
 package com.curso.mercat.model;
 
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.Table;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.*;
+
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -34,6 +29,10 @@ public class Purchase {
     @OneToMany(mappedBy = "purchase", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PurchaseItem> items = new ArrayList<>();
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    @JsonIgnore // <-- Evita serializar el objeto usuario completo en la respuesta
+    private User user;
 
     // 1. Constructor vacío (Obligatorio para JPA)
     public Purchase() {
@@ -45,8 +44,17 @@ public class Purchase {
         this.total = total;
     }
 
+    // Getter y Setter
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
+    }
+
     // 3. Método auxiliar de conveniencia para añadir líneas de compra
-    //Al ser una relación bidireccional, es una buena práctica mantener sincronizados ambos lados del vínculo en memoria:
+    //Al ser una relación bidireccional las sincronizamos
     // añade el elemento a la lista local y, a su vez, le asigna a ese item su referencia a esta compra (item.setPurchase(this)).
     public void addItem(PurchaseItem item) {
         items.add(item);

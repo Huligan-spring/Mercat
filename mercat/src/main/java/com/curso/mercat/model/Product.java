@@ -20,6 +20,10 @@ public class Product {
     @Column(name = "price", nullable = false, precision = 10, scale = 2) //Define que admite hasta 10 dígitos en total, de los cuales 2 son decimales
     private BigDecimal price;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id") // Nullable por defecto (null = producto global)
+    private User user;
+
     // 1. Constructor vacío (Obligatorio para JPA/Hibernate)
     public Product() {
     }
@@ -29,6 +33,17 @@ public class Product {
         this.barcode = barcode;
         this.name = name;
         this.price = price;
+    }
+
+
+
+    // Getter y Setter
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
     }
 
     public Long getId() {

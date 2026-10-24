@@ -5,12 +5,14 @@ import com.curso.mercat.dto.CheckoutRequest;
 import com.curso.mercat.model.Product;
 import com.curso.mercat.model.Purchase;
 import com.curso.mercat.model.PurchaseItem;
+import com.curso.mercat.model.User;
 import com.curso.mercat.repository.ProductRepository;
 import com.curso.mercat.repository.PurchaseRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -25,12 +27,14 @@ public class PurchaseService {
     }
 
     @Transactional
-    public Purchase checkout(CheckoutRequest request) {
+    public Purchase checkout(CheckoutRequest request, User user) {
         if (request == null || request.getItems() == null || request.getItems().isEmpty()) {
             throw new IllegalArgumentException("El carrito no puede estar vacío.");
         }
 
         Purchase purchase = new Purchase(BigDecimal.ZERO);
+        purchase.setUser(user); // Vincula la compra a l'usuari autenticat
+
         BigDecimal calculatedTotal = BigDecimal.ZERO;
 
         for (CartItemRequest itemRequest : request.getItems()) {
@@ -45,20 +49,25 @@ public class PurchaseService {
 
             Product product = optionalProduct.get();
 
-            // Construye la línea congelando nombre y precio actual
+            // Construeix la línia congelant nom i preu actual
             PurchaseItem item = new PurchaseItem(product, itemRequest.getQuantity());
 
-            // Asocia el ítem a la compra
+            // Associa l'ítem a la compra
             purchase.addItem(item);
 
-            // Acumula el total con precisión decimal
+            // Acumula el total amb precisió decimal
             calculatedTotal = calculatedTotal.add(item.getSubtotal());
         }
 
-        // Fija el total oficial verificado por el servidor
+        // Fixa el total oficial verificat pel servidor
         purchase.setTotal(calculatedTotal);
 
-        // Guarda la compra y, por cascada, todos sus PurchaseItems
+        // Desa la compra i, per cascada, tots els seus PurchaseItems
         return purchaseRepository.save(purchase);
+    }
+
+    // Retorna l'historial de compres de l'usuari
+    public List<Purchase> getPurchasesByUser(User user) {
+        return purchaseRepository.findByUserIdOrderByPurchasedAtDesc(user.getId());
     }
 }
