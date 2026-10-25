@@ -27,10 +27,10 @@
 3. [El Modelo de Catálogo Híbrido (Multi-Inquilino)](#-el-modelo-de-catálogo-híbrido-multi-inquilino)
 4. [Seguridad Stateless & Autenticación JWT](#-seguridad-stateless--autenticación-jwt)
 5. [Transaccionalidad e Inmutabilidad de Compras](#-transaccionalidad-e-inmutabilidad-de-compras)
-6. [Diagramas Técnicos](#-diagramas-técnicos)
+6. [Diagramas Técnicos & Esquema de Base de Datos](#-diagramas-técnicos--esquema-de-base-de-datos)
    - [Diagrama Entidad-Relación (ER)](#a-diagrama-entidad-relación-er)
-   - [Flujo de Autenticación y Autorización](#b-flujo-de-autenticación-y-autorización-jwt)
-   - [Resolución de Prioridad en Búsquedas](#c-resolución-de-prioridad-personal-vs-global)
+   - [Esquema DDL SQL & Índices Condicionales](#b-esquema-ddl-sql--índices-condicionales-postgresql--supabase)
+   - [Flujo de Autenticación y Autorización](#c-flujo-de-autenticación-y-autorización-jwt)
 7. [Matriz de Endpoints REST](#-matriz-de-endpoints-rest)
 8. [Optimizaciones de Infraestructura & Cloud (Render + Supabase)](#-optimizaciones-de-infraestructura--cloud-render--supabase)
 9. [Despliegue con Docker (Multi-stage Build)](#-despliegue-con-docker-multi-stage-build)
@@ -255,6 +255,68 @@ erDiagram
         integer quantity "Unidades compradas (> 0)"
         numeric subtotal "unit_price * quantity"
     }
+```
+
+### B. Esquema DDL SQL & Índices Condicionales (PostgreSQL / Supabase)
+
+El script SQL completo se encuentra disponible en [`database/schema.sql`](database/schema.sql). Incluye las definiciones DDL exactas, claves foráneas y los **índices parciales condicionales** imprescindibles para el catálogo híbrido que Hibernate no genera de forma automática:
+
+```sql
+-- 1. TABLA: USERS (Usuarios y Roles de Spring Security)
+CREATE TABLE users (
+    id BIGSERIAL PRIMARY KEY,
+    email VARCHAR(150) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    role VARCHAR(20) NOT NULL DEFAULT 'ROLE_USER',
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 2. TABLA: PRODUCTS (Catálogo Híbrido: Maestro Global vs. Personal)
+CREATE TABLE products (
+    id BIGSERIAL PRIMARY KEY,
+    barcode VARCHAR(13) NOT NULL,
+    name VARCHAR(150) NOT NULL,
+    price NUMERIC(10, 2) NOT NULL CHECK (price >= 0),
+    user_id BIGINT REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- ÍNDICES CONDICIONALES PARA EL MODELO HÍBRIDO (POSTGRESQL):
+-- Unicidad en catálogo global (solo puede haber un código único con user_id NULL)
+CREATE UNIQUE INDEX idx_products_barcode_global 
+ON products (barcode) 
+WHERE user_id IS NULL;
+
+-- Unicidad personal (un usuario solo puede tener una versión personalizada por código)
+CREATE UNIQUE INDEX idx_products_barcode_user 
+ON products (barcode, user_id) 
+WHERE user_id IS NOT NULL;
+
+-- Optimización de consulta de prioridad Personal > Global (ORDER BY user_id DESC NULLS LAST)
+CREATE INDEX idx_products_lookup 
+ON products (barcode, user_id DESC NULLS LAST);
+
+-- Optimización de autocompletado insensible a mayúsculas
+CREATE INDEX idx_products_search 
+ON products (user_id, LOWER(name));
+
+-- 3. TABLA: PURCHASES (Cabeceras de Compra Atómica)
+CREATE TABLE purchases (
+    id BIGSERIAL PRIMARY KEY,
+    purchased_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    total NUMERIC(10, 2) NOT NULL CHECK (total >= 0),
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- 4. TABLA: PURCHASE_ITEMS (Líneas de Compra con Precios Históricos Congelados)
+CREATE TABLE purchase_items (
+    id BIGSERIAL PRIMARY KEY,
+    purchase_id BIGINT NOT NULL REFERENCES purchases(id) ON DELETE CASCADE,
+    product_id BIGINT NOT NULL REFERENCES products(id) ON DELETE RESTRICT,
+    product_name VARCHAR(150) NOT NULL,
+    unit_price NUMERIC(10, 2) NOT NULL CHECK (unit_price >= 0),
+    quantity INTEGER NOT NULL CHECK (quantity > 0),
+    subtotal NUMERIC(10, 2) NOT NULL CHECK (subtotal >= 0)
+);
 ```
 
 ---
