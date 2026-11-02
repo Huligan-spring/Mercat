@@ -20,7 +20,7 @@ CREATE TABLE users (
 -- 3. TABLA: PRODUCTS (Catálogo Híbrido: Maestro Global vs. Personal)
 CREATE TABLE products (
     id BIGSERIAL PRIMARY KEY,
-    barcode VARCHAR(13) NOT NULL,
+    barcode VARCHAR(100) NOT NULL, -- Flexible para EAN-8, EAN-13 y códigos QR al peso
     name VARCHAR(150) NOT NULL,
     price NUMERIC(10, 2) NOT NULL CHECK (price >= 0),
     user_id BIGINT REFERENCES users(id) ON DELETE CASCADE

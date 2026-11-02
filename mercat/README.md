@@ -14,7 +14,7 @@
 
 **Motor empresarial en la nube para el asistente de compras Mercat. Proporciona aislamiento multi-inquilino (*multi-tenant*), catálogo híbrido con bifurcación (*forking*) de productos, persistencia atómica transaccional de compras y seguridad *stateless* basada en tokens JWT.**
 
-[Repositorio Frontend (Mercat_front)](https://github.com/Huligan-spring/Mercat_front.git) • [Demo en Vivo (PWA)](https://huligan-spring.github.io/Mercat_front/) • [Matriz de Endpoints](#-matriz-de-endpoints-rest)
+[Web Oficial (Mercat_web)](https://huligan-spring.github.io/Mercat_web/) • [Repositorio Frontend (Mercat_front)](https://github.com/Huligan-spring/Mercat_front.git) • [Demo en Vivo (PWA)](https://huligan-spring.github.io/Mercat_front/) • [Matriz de Endpoints](#-matriz-de-endpoints-rest)
 
 </div>
 
@@ -41,7 +41,7 @@
 
 ## 🌐 Visión General del Sistema
 
-**Mercat API** es el núcleo de backend para el asistente de compras de supermercado **Mercat**. Diseñado con una arquitectura desacoplada y moderna, atiende las peticiones del cliente móvil PWA ([Mercat_front](https://github.com/Huligan-spring/Mercat_front.git)) alojado en GitHub Pages.
+**Mercat API** es el núcleo de backend para el asistente de compras de supermercado **Mercat**. Diseñado con una arquitectura desacoplada y moderna, atiende las peticiones del portal web ([Mercat_web](https://huligan-spring.github.io/Mercat_web/)) y del cliente móvil PWA ([Mercat_front](https://github.com/Huligan-spring/Mercat_front.git)) alojados en GitHub Pages.
 
 ### Principales Desafíos Resueltos:
 - **Modelo de Datos Híbrido:** Concilia un catálogo central compartido (con miles de productos verificados) con la libertad de que cualquier comprador añada artículos propios o adapte precios locales sin corromper la base de datos común.
@@ -123,7 +123,7 @@ El gran valor diferencial de Mercat API radica en su gestión inteligente del ca
 ### 3. Consultas SQL Nativas con Prioridad Dinámica
 Para resolver las consultas en un solo viaje de ida y vuelta a la base de datos (*single round-trip*), `ProductRepository` implementa consultas nativas avanzadas de PostgreSQL:
 
-#### A. Consulta de Producto Efectivo (Lectura por Código EAN):
+#### A. Consulta de Producto Efectivo (Lectura por Código de Barras / QR):
 ```sql
 SELECT * FROM products 
 WHERE barcode = :barcode 
@@ -233,7 +233,7 @@ erDiagram
 
     products {
         bigint id PK "SERIAL"
-        varchar barcode "13 caracteres (EAN-13), NOT NULL"
+        varchar barcode "Código de barras o QR flexible, NOT NULL"
         varchar name "150 caracteres, NOT NULL"
         numeric price "DECIMAL(10, 2), NOT NULL"
         bigint user_id FK "Nullable (NULL = Catálogo Maestro)"
@@ -274,7 +274,7 @@ CREATE TABLE users (
 -- 2. TABLA: PRODUCTS (Catálogo Híbrido: Maestro Global vs. Personal)
 CREATE TABLE products (
     id BIGSERIAL PRIMARY KEY,
-    barcode VARCHAR(13) NOT NULL,
+    barcode VARCHAR(100) NOT NULL, -- Compatible con EAN-8, EAN-13 y códigos QR al peso
     name VARCHAR(150) NOT NULL,
     price NUMERIC(10, 2) NOT NULL CHECK (price >= 0),
     user_id BIGINT REFERENCES users(id) ON DELETE CASCADE
@@ -467,7 +467,7 @@ Para ejecutar la aplicación (tanto en local como en el panel de configuración 
 
 | Variable | Descripción | Ejemplo / Valor |
 | :--- | :--- | :--- |
-| `SPRING_DATASOURCE_URL` | URL JDBC de conexión con Supabase | `jdbc:postgresql://aws-0-eu-central-1.pooler.supabase.com:5432/postgres?sslmode=require` |
+| `SPRING_DATASOURCE_URL` | URL JDBC de conexión con Supabase | `jdbc:postgresql://aws-0-eu-west-1.pooler.supabase.com:5432/postgres?sslmode=require` |
 | `SPRING_DATASOURCE_USERNAME` | Usuario de la base de datos | `postgres.your-project-id` |
 | `SPRING_DATASOURCE_PASSWORD` | Contraseña de la base de datos | `tu_password_seguro` |
 | `JWT_SECRET` | Clave secreta para firmar tokens HS256 | `cadena_hexadecimal_o_base64_de_minimo_256_bits` |
